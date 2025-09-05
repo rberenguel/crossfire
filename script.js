@@ -178,7 +178,8 @@ const canvasContainer = document.getElementById("pixi-canvas");
       actionsTakenThisTurn: [],
       isPhasing: false,
       container: null,
-      text: null,
+      hpText: null,
+      speedText: null,
       shapeData: null,
       orientationAtTurnStart: 0,
       turnDelta: 0,
@@ -202,17 +203,31 @@ const canvasContainer = document.getElementById("pixi-canvas");
       .fill({ color: SHIP_COLORS[id] });
     const border = new PIXI.Graphics();
     border.name = "border";
-    ship.text = new PIXI.Text({
-      text: String(ship.speed),
-      style: {
-        fill: "white",
-        fontSize: 24,
-        fontWeight: "bold",
-        stroke: { color: "#000000", width: 4, join: "round" },
-      },
+
+    const hpTextStyle = new PIXI.TextStyle({
+      fill: "#67e8f9", // Cyan for HP
+      fontSize: 28,
+      fontWeight: "bold",
+      stroke: { color: "#000000", width: 5, join: "round" },
     });
-    ship.text.anchor.set(0.5);
-    ship.container.addChild(body, ship.text, border);
+    const speedTextStyle = new PIXI.TextStyle({
+      fill: "#ffffff", // White for Speed
+      fontSize: 22,
+      fontWeight: "bold",
+      stroke: { color: "#000000", width: 4, join: "round" },
+    });
+
+    ship.hpText = new PIXI.Text({ text: String(ship.hp), style: hpTextStyle });
+    ship.hpText.anchor.set(0.5);
+
+    ship.speedText = new PIXI.Text({
+      text: String(ship.speed),
+      style: speedTextStyle,
+    });
+    ship.speedText.anchor.set(0.5);
+    ship.speedText.x = -CELL_SIZE * 0.25;
+
+    ship.container.addChild(body, ship.hpText, ship.speedText, border);
     app.stage.addChild(ship.container);
     ship.container.on("pointerdown", (event) => {
       event.stopPropagation();
@@ -239,9 +254,14 @@ const canvasContainer = document.getElementById("pixi-canvas");
     asteroid.container.y = y * CELL_SIZE + CELL_SIZE / 2;
     const vertices = generateAsteroidVertices(CELL_SIZE / 2.5, 9);
     const body = new PIXI.Graphics().poly(vertices.flat()).fill(0x964b00);
+    const textStyle = new PIXI.TextStyle({
+      fill: "white",
+      fontSize: 20,
+      fontWeight: "bold",
+    });
     asteroid.text = new PIXI.Text({
       text: String(asteroid.hp),
-      style: { fill: "white", fontSize: 20, fontWeight: "bold" },
+      style: textStyle,
     });
     asteroid.text.anchor.set(0.5);
     asteroid.container.addChild(body, asteroid.text);
@@ -249,12 +269,46 @@ const canvasContainer = document.getElementById("pixi-canvas");
     return asteroid;
   }
 
+  function showDamageEffect(targetShip) {
+    const shipBody = targetShip.container.children[0];
+    shipBody.tint = 0xff0000;
+    setTimeout(() => {
+      shipBody.tint = 0xffffff;
+    }, 300);
+
+    const damageTextStyle = new PIXI.TextStyle({
+      fill: "#ff4d4d",
+      fontSize: 28,
+      fontWeight: "bold",
+      stroke: { color: "white", width: 5 },
+    });
+    const damageText = new PIXI.Text({ text: "-1", style: damageTextStyle });
+    damageText.anchor.set(0.5);
+    damageText.x = targetShip.container.x;
+    damageText.y = targetShip.container.y - CELL_SIZE / 2;
+    app.stage.addChild(damageText);
+
+    let life = 60;
+    const tickerCallback = () => {
+      damageText.y -= 0.75;
+      damageText.alpha = life / 60;
+      life--;
+      if (life <= 0) {
+        app.ticker.remove(tickerCallback);
+        damageText.destroy();
+      }
+    };
+    app.ticker.add(tickerCallback);
+  }
+
   function updateShipGraphics(ship) {
     if (!ship || !ship.container || ship.container.destroyed) return;
-    ship.text.text = String(ship.speed);
+    ship.hpText.text = String(ship.hp);
+    ship.speedText.text = String(ship.speed);
     ship.container.rotation =
       directionAngle[ship.orientation] * (Math.PI / 180);
-    ship.text.rotation = -ship.container.rotation;
+    ship.hpText.rotation = -ship.container.rotation;
+    ship.speedText.rotation = -ship.container.rotation;
     updateUI();
   }
 
@@ -405,6 +459,7 @@ const canvasContainer = document.getElementById("pixi-canvas");
             ship.actionsLeft--;
             ship.actionsTakenThisTurn.push(typeKey);
             ship.speed++;
+            updateShipGraphics(ship);
           }
           break;
         case "decelerate":
@@ -412,6 +467,7 @@ const canvasContainer = document.getElementById("pixi-canvas");
             ship.actionsLeft--;
             ship.actionsTakenThisTurn.push(typeKey);
             ship.speed--;
+            updateShipGraphics(ship);
           }
           break;
         case "turnLeft":
@@ -457,7 +513,7 @@ const canvasContainer = document.getElementById("pixi-canvas");
       }
       updateUIPanels();
     } else if (gameState.phase === "SETUP_ORIENT" && actionType === "orient") {
-      ship.orientation = value;
+      selectedShip.orientation = value;
       runSetup();
     }
 
@@ -508,7 +564,9 @@ const canvasContainer = document.getElementById("pixi-canvas");
       );
       if (otherPlayer) {
         otherPlayer.hp--;
+        showDamageEffect(otherPlayer);
         enforceGoldenRule(otherPlayer);
+        updateShipGraphics(otherPlayer);
         break;
       }
       const asteroid = asteroids.find((a) => a.x === checkX && a.y === checkY);
@@ -588,6 +646,7 @@ const canvasContainer = document.getElementById("pixi-canvas");
         const asteroid = asteroids.find((a) => a.x === pos.x && a.y === pos.y);
         if (asteroid) {
           move.player.hp -= asteroid.hp;
+          showDamageEffect(move.player);
           if (move.player.hp > 0)
             move.player.speed = Math.max(1, move.player.speed - 1);
           enforceGoldenRule(move.player);

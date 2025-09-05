@@ -7,14 +7,13 @@ A two-player tactical game of spaceship combat on an 8x8 grid. Players maneuver 
 ### Components
 
 - 1 8x8 board
-- 2 player dice (distinguishable colors, e.g., blue and red) representing ships.
+- 4 player dice (distinguishable colors, e.g., two of each blue and red) representing ships.
 - 3 neutral dice (e.g., brown) representing asteroids.
-- A method for tracking Hull Points (paper and pencil).
 
 ### Core Ship Rules
 
-- **Hull Points (HP)**: A ship's health. Starts at 6. If it reaches 0, the ship is destroyed.
-- **Speed**: A ship's velocity, represented by the number facing up on its die (pips). The minimum Speed is 1.
+- **Hull Points (HP)**: A ship's health. Starts at 6. If it reaches 0, the ship is destroyed. It is counted by one of the dies.
+- **Speed**: A ship's velocity, represented by the number facing up on one of its die (pips). The minimum Speed is 1.
 - **The Golden Rule**: A ship's **Speed cannot exceed its current HP**.
   - If damage causes HP to drop below the current Speed, the Speed is immediately reduced to match the new HP.
   - A player cannot choose to accelerate if their Speed is already equal to their HP.
@@ -23,10 +22,10 @@ A two-player tactical game of spaceship combat on an 8x8 grid. Players maneuver 
 
 1.  **Choose Colors**: Each player chooses a ship color. Both ships start with **6 HP**.
 2.  **Determine First Player**: Each player rolls their die. The higher roll goes first. Keep rolling on ties.
-3.  **Set Initial Speed**: The number rolled becomes the ship's initial **Speed**. If the roll is less than 3, the Speed is set to 3. Place the die on the board with this number facing up.
+3.  **Set Initial Speed**: The number rolled becomes the ship's initial **Speed** dice. If the roll is less than 3, the Speed is set to 3. Place the die on the board with this number facing up.
 4.  **Place Ships**: The first player places their ship on any empty square. The second player does the same.
 5.  **Place Asteroids**: Starting with the first player, players alternate placing the three asteroids. For each, roll a die and place it on any empty square. The number rolled is the asteroid's **Hull**. If the roll is less than 3, its Hull is set to 3.
-6.  **Set Initial Orientation**: Player 1 chooses an orientation for their ship (N, NE, E, SE, S, SW, W, or NW), then player 2 does.
+6.  **Set Initial Orientation**: Player 1 chooses an orientation for their ship (N, NE, E, SE, S, SW, W, or NW), then player 2 does. When choosing an orientation, place the hull dice pointing in that direction in the square, the speed dice stays in the middle of the square.
 
 ### Winning the Game
 
@@ -42,9 +41,9 @@ Players alternate turns. A full round consists of Player 1's turn, followed by P
 
 1.  **Action Phase (Player's Turn)**: The current player performs **two** actions. They can't be the same action.
 
-    - **Fire**: Shoots a laser in the ship's current direction. The beam travels across the entire board in a straight line (no wrap-around).
-    - **Accelerate/Decelerate**: Increase or decrease Speed by 1 (updating the die face). Remember the Golden Rule.
-    - **Turn**: Change orientation by 45° (e.g., from N to NE or NW). **Exception**: If Speed is 1, you may turn to any of the 8 orientations.
+    - **Fire action**: Shoots a laser in the ship's current direction. The beam travels across the entire board in a straight line (no wrap-around).
+    - **Accelerate/Decelerate action**: Increase or decrease Speed by 1 (updating the die face). Remember the Golden Rule.
+    - **Turn action**: Change orientation by 45° (e.g., from N to NE or NW). **Exception**: If Speed is 1, you may turn to any of the 8 orientations.
 
 2.  **Movement Phase**: After **both** players have taken their turns, their ships move simultaneously. The number of squares moved is equal to `ceil(Speed / 2)`.
     - Speed 1 or 2: Move 1 square.
