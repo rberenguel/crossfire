@@ -32,6 +32,12 @@ const canvasContainer = document.getElementById("pixi-canvas");
   const winnerModalEl = document.getElementById("winner-modal");
   const winnerTextEl = document.getElementById("winner-text");
 
+const gameSetupModalEl = document.getElementById("game-setup-modal"); // Add this
+
+// Add these config variables
+let gameMode = "human";
+const AI_PLAYER_ID = 1;
+
   document
     .getElementById("btn-fire")
     .addEventListener("click", () => handleAction("fire"));
@@ -54,8 +60,9 @@ const canvasContainer = document.getElementById("pixi-canvas");
   });
   document.getElementById("btn-restart").addEventListener("click", () => {
     winnerModalEl.classList.add("hidden");
-    initGame();
-  });
+    gameSetupModalEl.classList.remove("hidden");
+    app.stage.removeChildren(); // Clear the board
+});
   document.querySelectorAll(".orient-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const orient = parseInt(e.target.dataset.orient);
@@ -77,6 +84,16 @@ const canvasContainer = document.getElementById("pixi-canvas");
       }
     });
   });
+  document.getElementById("btn-vs-human").addEventListener("click", () => {
+    gameMode = 'human';
+    gameSetupModalEl.classList.add("hidden");
+    initGame();
+});
+document.getElementById("btn-vs-ai").addEventListener("click", () => {
+    gameMode = 'ai';
+    gameSetupModalEl.classList.add("hidden");
+    initGame();
+});
 
   // --- GAME STATE ---
   let gameState;
@@ -316,7 +333,8 @@ const canvasContainer = document.getElementById("pixi-canvas");
     return objects.some((c) => c.x === x && c.y === y);
   }
 
-  function initGame() {
+
+function initGame() {
     app.stage.removeChildren();
     const grid = new PIXI.Graphics();
     for (let i = 0; i <= BOARD_SIZE; i++) {
@@ -337,10 +355,12 @@ const canvasContainer = document.getElementById("pixi-canvas");
     players = [];
     asteroids = [];
     selectedShip = null;
-    updateUI();
-  }
+    updateUI(); // This will show "Rolling for first player..."
+    setTimeout(runSetup, 500); // And this will kick off the setup process
+}
 
   function handleCanvasClick(event) {
+    if (gameMode === 'ai' && gameState.turn === AI_PLAYER_ID) return;
     const x = Math.floor(event.global.x / CELL_SIZE);
     const y = Math.floor(event.global.y / CELL_SIZE);
     if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) return;
@@ -392,6 +412,9 @@ const canvasContainer = document.getElementById("pixi-canvas");
         break;
     }
     updateUI();
+    if (gameMode === 'ai' && gameState.turn === AI_PLAYER_ID && !gameState.winner && gameState.phase.startsWith("SETUP_")) {
+      setTimeout(runAITurn, 1000);
+  }
   }
 
   function selectShip(ship) {
@@ -411,7 +434,7 @@ const canvasContainer = document.getElementById("pixi-canvas");
     updateUIPanels();
   }
 
-  function startTurn(playerId) {
+ function startTurn(playerId) {
     gameState.phase = "ACTION";
     gameState.subPhase = null;
     gameState.turn = playerId;
@@ -420,9 +443,59 @@ const canvasContainer = document.getElementById("pixi-canvas");
     currentPlayer.actionsTakenThisTurn = [];
     currentPlayer.orientationAtTurnStart = currentPlayer.orientation;
     currentPlayer.turnDelta = 0;
-    deselectAll();
+    
+    // Automatically select the current player's ship
+    selectShip(currentPlayer); 
+    
     updateUI();
+    if (gameMode === 'ai' && playerId === AI_PLAYER_ID && !gameState.winner) {
+      setTimeout(runAITurn, 1000);
   }
+  }
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runAITurn() {
+  if (gameState.winner || gameMode !== 'ai' || gameState.turn !== AI_PLAYER_ID) return;
+
+  deselectAll();
+  const aiPlayer = players.find((p) => p.id === AI_PLAYER_ID);
+  if(aiPlayer?.container) selectShip(aiPlayer);
+
+  await sleep(800);
+
+  switch (gameState.phase) {
+    case "SETUP_PLACE_SHIP":
+    case "SETUP_PLACE_ASTEROID": {
+      const { x, y } = AI.getBestPlacement(players, asteroids);
+      runSetup(x, y);
+      break;
+    }
+    case "SETUP_ORIENT": {
+      const humanPlayer = players.find((p) => p.id !== AI_PLAYER_ID);
+      const orientation = AI.getBestOrientation(aiPlayer, humanPlayer);
+      aiPlayer.orientation = orientation;
+      updateShipGraphics(aiPlayer);
+      await sleep(500);
+      runSetup();
+      break;
+    }
+    case "ACTION": {
+      const humanPlayer = players.find((p) => p.id !== AI_PLAYER_ID);
+      const actions = AI.getBestActions(aiPlayer, humanPlayer, players, asteroids);
+      for (const action of actions) {
+        if (selectedShip?.id !== AI_PLAYER_ID) selectShip(aiPlayer);
+        await handleAction(action);
+        await sleep(600);
+      }
+      await sleep(500);
+      if (gameState.phase === "ACTION") endPlayerTurn();
+      break;
+    }
+  }
+}
 
   async function handleAction(actionType, value) {
     if (
@@ -761,7 +834,6 @@ const canvasContainer = document.getElementById("pixi-canvas");
     switch (gameState.phase) {
       case "SETUP_ROLL":
         statusText = "Rolling for first player...";
-        setTimeout(runSetup, 500);
         break;
       case "SETUP_PLACE_SHIP":
         statusText = `Player ${gameState.turn + 1}, place your ship.`;
@@ -803,5 +875,5 @@ const canvasContainer = document.getElementById("pixi-canvas");
       .join("");
     playerInfoEl.innerHTML = pInfo;
   }
-  initGame();
+  //initGame();
 })();

@@ -23,6 +23,28 @@
   <body
     class="bg-gray-900 text-white flex flex-col items-center justify-center h-screen p-4"
   >
+  <div
+  id="game-setup-modal"
+  class="fixed inset-0 bg-gray-900 flex items-center justify-center z-50"
+>
+  <div class="bg-gray-800 p-8 rounded-lg text-center">
+    <h1 class="text-3xl font-bold text-cyan-400 mb-6">Roll-for-Laser</h1>
+    <div class="space-y-4">
+      <button
+        id="btn-vs-human"
+        class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded transition-colors text-lg"
+      >
+        Human vs. Human
+      </button>
+      <button
+        id="btn-vs-ai"
+        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded transition-colors text-lg"
+      >
+        Human vs. Computer
+      </button>
+    </div>
+  </div>
+</div>
     <div
       id="game-container"
       class="w-full max-w-4xl flex flex-col lg:flex-row items-center justify-center gap-4"
@@ -98,7 +120,7 @@
         </button>
       </div>
     </div>
-
+    <script src="ai.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
