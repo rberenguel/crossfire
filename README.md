@@ -1,12 +1,17 @@
 # Crossfire
 
-I was listening to a podcast this morning (Friday, Sept 5, 2025) and somehow thought "I wonder if [Destrier](https://github.com/rberenguel/destrier) could be a boardgame?"
+I was listening to a podcast this morning (Friday, Sept 5, 2025) and somehow thought _I wonder if [Destrier](https://github.com/rberenguel/destrier) could be a boardgame?_
 
 I'm still not sure if it's fun or not, this is why I wrote this web-based prototype.
 
+> [!IMPORTANT]
+> This is WIP, styling is not finished.
+
 ---
 
-You can find the rules in `rules.md`.
+## Rules
+
+You can find the rules in []`rules.md`](https://github.com/rberenguel/crossfire/blob/gh-pages/rules.md).
 
 TL;DR:
 
