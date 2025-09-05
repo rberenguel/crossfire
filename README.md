@@ -1,6 +1,10 @@
 # Crossfire
 
-I was listening to a podcast this morning (Friday, Sept 5, 2025) and somehow thought _I wonder if [Destrier](https://github.com/rberenguel/destrier) could be a boardgame?_
+I was listening to a podcast this morning (Friday, Sept 5, 2025) and somehow thought
+
+>  _I wonder if [Destrier](https://github.com/rberenguel/destrier) could be a boardgame?_
+
+---
 
 I'm still not sure if it's fun or not, this is why I wrote this web-based prototype.
 
@@ -19,6 +23,8 @@ TL;DR:
 - You only need a handful of die to play.
 
 Or, play with the web-based prototype.
+
+---
 
 ## Acknodledgements
 
