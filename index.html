@@ -3,100 +3,80 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Roll-for-Laser Prototype</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Crossfire</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.1.5/pixi.min.js"></script>
-    <style>
-      body {
-        font-family: "Inter", sans-serif;
-        overflow: hidden;
-      }
-      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap");
-      .action-btn {
-        @apply w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded transition-colors;
-      }
-      .orient-btn {
-        @apply w-12 h-12 flex items-center justify-center bg-gray-700 hover:bg-cyan-700 rounded transition-colors font-bold text-lg;
-      }
-    </style>
+    <link href="./fonts/sixtyfour.css" rel="stylesheet" />
+    <link href="./fonts/inter.css" rel="stylesheet" />
+    <link href="style.css" rel="stylesheet" />
+    <style></style>
   </head>
-  <body
-    class="bg-gray-900 text-white flex flex-col items-center justify-center h-screen p-4"
-  >
-  <div
-  id="game-setup-modal"
-  class="fixed inset-0 bg-gray-900 flex items-center justify-center z-50"
->
-  <div class="bg-gray-800 p-8 rounded-lg text-center">
-    <h1 class="text-3xl font-bold text-cyan-400 mb-6">Roll-for-Laser</h1>
-    <div class="space-y-4">
-      <button
-        id="btn-vs-human"
-        class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded transition-colors text-lg"
-      >
-        Human vs. Human
-      </button>
-      <button
-        id="btn-vs-ai"
-        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded transition-colors text-lg"
-      >
-        Human vs. Computer
-      </button>
-    </div>
-  </div>
-</div>
-    <div
-      id="game-container"
-      class="w-full max-w-4xl flex flex-col lg:flex-row items-center justify-center gap-4"
-    >
-      <div
-        id="pixi-canvas"
-        class="aspect-square w-full max-w-lg rounded-lg overflow-hidden shadow-2xl shadow-cyan-500/20"
-      ></div>
-
-      <div
-        class="bg-gray-800 p-6 rounded-lg shadow-lg w-full lg:w-80 space-y-4"
-      >
-        <div>
-          <h1 class="text-2xl font-bold text-cyan-400">Roll-for-Laser</h1>
-          <p id="game-status" class="text-lg font-semibold text-gray-300">
-            Initializing...
-          </p>
+  <body>
+    <div id="game-setup-modal" class="modal">
+      <div id="rules-modal" class="modal hidden">
+        <div class="rules-modal-content">
+          <div id="rules-content"></div>
+          <button
+            id="btn-close-rules"
+            class="button action-btn"
+            style="margin-top: 1.5rem; width: 100%"
+          >
+            Close
+          </button>
         </div>
+      </div>
+      <div class="modal-content">
+        <h1 class="game-title titlefonted">Crossfire</h1>
+        <button id="btn-vs-human" class="button action-btn">
+          Human vs. Human
+        </button>
+        <button id="btn-vs-ai" class="button action-btn end-turn">
+          Human vs. Computer
+        </button>
+        <button id="btn-rules" class="button secondary">View Rules</button>
+      </div>
+    </div>
 
-        <div id="player-info" class="space-y-3"></div>
+    <div class="game-wrapper">
+      <div class="top-bar">
+        <div class="player-stats">
+          <span id="p1-info-top" class="player-info"></span>
+          <span id="p2-info-top" class="player-info"></span>
+        </div>
+        <div class="game-status">
+          <span id="game-status">Initializing...</span>
+        </div>
+      </div>
 
-        <div id="orientation-panel" class="space-y-2 hidden">
-          <h3 id="orientation-title" class="text-xl font-semibold">
-            Set Orientation
-          </h3>
-          <div class="grid grid-cols-3 gap-2 w-40 mx-auto">
-            <button class="orient-btn" data-orient="3">↖</button>
-            <button class="orient-btn" data-orient="2">↑</button>
-            <button class="orient-btn" data-orient="1">↗</button>
-            <button class="orient-btn" data-orient="4">←</button>
-            <div class="w-12 h-12"></div>
-            <button class="orient-btn" data-orient="0">→</button>
-            <button class="orient-btn" data-orient="5">↙</button>
-            <button class="orient-btn" data-orient="6">↓</button>
-            <button class="orient-btn" data-orient="7">↘</button>
+      <div id="pixi-canvas"></div>
+
+      <div class="actions-container">
+        <div id="orientation-panel" class="panel hidden">
+          <h3 id="orientation-title">Set Orientation</h3>
+          <div class="orient-grid">
+            <button class="button orient-btn" data-orient="3">↖</button>
+            <button class="button orient-btn" data-orient="2">↑</button>
+            <button class="button orient-btn" data-orient="1">↗</button>
+            <button class="button orient-btn" data-orient="4">←</button>
+            <div></div>
+            <button class="button orient-btn" data-orient="0">→</button>
+            <button class="button orient-btn" data-orient="5">↙</button>
+            <button class="button orient-btn" data-orient="6">↓</button>
+            <button class="button orient-btn" data-orient="7">↘</button>
           </div>
         </div>
-
-        <div id="actions-panel" class="space-y-2 hidden">
-          <h3 class="text-xl font-semibold">
-            Actions (<span id="actions-left">2</span>/2)
-          </h3>
-          <div class="grid grid-cols-2 gap-2">
-            <button id="btn-fire" class="action-btn">Fire Laser</button>
-            <button id="btn-accel" class="action-btn">Accelerate</button>
-            <button id="btn-decel" class="action-btn">Decelerate</button>
-            <button id="btn-turn-left" class="action-btn">Turn Left</button>
-            <button id="btn-turn-right" class="action-btn">Turn Right</button>
-            <button
-              id="btn-end-turn"
-              class="action-btn col-span-2 bg-green-600 hover:bg-green-700"
-            >
+        <div id="actions-panel" class="panel hidden">
+          <h3>Actions (<span id="actions-left">2</span>/2)</h3>
+          <div class="button-grid">
+            <button id="btn-fire" class="button action-btn">Fire Laser</button>
+            <button id="btn-accel" class="button action-btn">Accelerate</button>
+            <button id="btn-decel" class="button action-btn">Decelerate</button>
+            <button id="btn-turn-left" class="button action-btn">
+              Turn Left
+            </button>
+            <button id="btn-turn-right" class="button action-btn">
+              Turn Right
+            </button>
+            <button id="btn-end-turn" class="button action-btn end-turn">
               End Turn
             </button>
           </div>
@@ -104,22 +84,13 @@
       </div>
     </div>
 
-    <div
-      id="winner-modal"
-      class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
-    >
-      <div
-        class="bg-gray-800 border border-cyan-400 rounded-lg p-8 text-center shadow-2xl"
-      >
-        <h2 id="winner-text" class="text-4xl font-bold mb-4"></h2>
-        <button
-          id="btn-restart"
-          class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
-        >
-          Play Again
-        </button>
+    <div id="winner-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2 id="winner-text"></h2>
+        <button id="btn-restart" class="button action-btn">Play Again</button>
       </div>
     </div>
+    <script src="rules.js"></script>
     <script src="ai.js"></script>
     <script src="script.js"></script>
   </body>

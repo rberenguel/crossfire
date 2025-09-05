@@ -24,7 +24,8 @@ const canvasContainer = document.getElementById("pixi-canvas");
 
   // --- UI ELEMENTS ---
   const gameStatusEl = document.getElementById("game-status");
-  const playerInfoEl = document.getElementById("player-info");
+  const p1InfoTopEl = document.getElementById("p1-info-top"); // ADD THIS
+  const p2InfoTopEl = document.getElementById("p2-info-top"); // ADD THIS
   const actionsPanelEl = document.getElementById("actions-panel");
   const orientationPanelEl = document.getElementById("orientation-panel");
   const orientationTitleEl = document.getElementById("orientation-title");
@@ -32,11 +33,11 @@ const canvasContainer = document.getElementById("pixi-canvas");
   const winnerModalEl = document.getElementById("winner-modal");
   const winnerTextEl = document.getElementById("winner-text");
 
-const gameSetupModalEl = document.getElementById("game-setup-modal"); // Add this
+  const gameSetupModalEl = document.getElementById("game-setup-modal"); // Add this
 
-// Add these config variables
-let gameMode = "human";
-const AI_PLAYER_ID = 1;
+  // Add these config variables
+  let gameMode = "human";
+  const AI_PLAYER_ID = 1;
 
   document
     .getElementById("btn-fire")
@@ -62,7 +63,7 @@ const AI_PLAYER_ID = 1;
     winnerModalEl.classList.add("hidden");
     gameSetupModalEl.classList.remove("hidden");
     app.stage.removeChildren(); // Clear the board
-});
+  });
   document.querySelectorAll(".orient-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const orient = parseInt(e.target.dataset.orient);
@@ -85,16 +86,22 @@ const AI_PLAYER_ID = 1;
     });
   });
   document.getElementById("btn-vs-human").addEventListener("click", () => {
-    gameMode = 'human';
+    gameMode = "human";
     gameSetupModalEl.classList.add("hidden");
     initGame();
-});
-document.getElementById("btn-vs-ai").addEventListener("click", () => {
-    gameMode = 'ai';
+  });
+  document.getElementById("btn-vs-ai").addEventListener("click", () => {
+    gameMode = "ai";
     gameSetupModalEl.classList.add("hidden");
     initGame();
-});
-
+  });
+  document.getElementById("btn-rules").addEventListener("click", () => {
+    // This function is defined in rules.js
+    showRules("rules-modal", "rules-content", "rules.md");
+  });
+  document.getElementById("btn-close-rules").addEventListener("click", () => {
+    document.getElementById("rules-modal").classList.add("hidden");
+  });
   // --- GAME STATE ---
   let gameState;
   let players;
@@ -333,8 +340,7 @@ document.getElementById("btn-vs-ai").addEventListener("click", () => {
     return objects.some((c) => c.x === x && c.y === y);
   }
 
-
-function initGame() {
+  function initGame() {
     app.stage.removeChildren();
     const grid = new PIXI.Graphics();
     for (let i = 0; i <= BOARD_SIZE; i++) {
@@ -357,10 +363,10 @@ function initGame() {
     selectedShip = null;
     updateUI(); // This will show "Rolling for first player..."
     setTimeout(runSetup, 500); // And this will kick off the setup process
-}
+  }
 
   function handleCanvasClick(event) {
-    if (gameMode === 'ai' && gameState.turn === AI_PLAYER_ID) return;
+    if (gameMode === "ai" && gameState.turn === AI_PLAYER_ID) return;
     const x = Math.floor(event.global.x / CELL_SIZE);
     const y = Math.floor(event.global.y / CELL_SIZE);
     if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) return;
@@ -412,9 +418,14 @@ function initGame() {
         break;
     }
     updateUI();
-    if (gameMode === 'ai' && gameState.turn === AI_PLAYER_ID && !gameState.winner && gameState.phase.startsWith("SETUP_")) {
+    if (
+      gameMode === "ai" &&
+      gameState.turn === AI_PLAYER_ID &&
+      !gameState.winner &&
+      gameState.phase.startsWith("SETUP_")
+    ) {
       setTimeout(runAITurn, 1000);
-  }
+    }
   }
 
   function selectShip(ship) {
@@ -434,7 +445,7 @@ function initGame() {
     updateUIPanels();
   }
 
- function startTurn(playerId) {
+  function startTurn(playerId) {
     gameState.phase = "ACTION";
     gameState.subPhase = null;
     gameState.turn = playerId;
@@ -443,59 +454,69 @@ function initGame() {
     currentPlayer.actionsTakenThisTurn = [];
     currentPlayer.orientationAtTurnStart = currentPlayer.orientation;
     currentPlayer.turnDelta = 0;
-    
+
     // Automatically select the current player's ship
-    selectShip(currentPlayer); 
-    
+    selectShip(currentPlayer);
+
     updateUI();
-    if (gameMode === 'ai' && playerId === AI_PLAYER_ID && !gameState.winner) {
+    if (gameMode === "ai" && playerId === AI_PLAYER_ID && !gameState.winner) {
       setTimeout(runAITurn, 1000);
-  }
-  }
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function runAITurn() {
-  if (gameState.winner || gameMode !== 'ai' || gameState.turn !== AI_PLAYER_ID) return;
-
-  deselectAll();
-  const aiPlayer = players.find((p) => p.id === AI_PLAYER_ID);
-  if(aiPlayer?.container) selectShip(aiPlayer);
-
-  await sleep(800);
-
-  switch (gameState.phase) {
-    case "SETUP_PLACE_SHIP":
-    case "SETUP_PLACE_ASTEROID": {
-      const { x, y } = AI.getBestPlacement(players, asteroids);
-      runSetup(x, y);
-      break;
     }
-    case "SETUP_ORIENT": {
-      const humanPlayer = players.find((p) => p.id !== AI_PLAYER_ID);
-      const orientation = AI.getBestOrientation(aiPlayer, humanPlayer);
-      aiPlayer.orientation = orientation;
-      updateShipGraphics(aiPlayer);
-      await sleep(500);
-      runSetup();
-      break;
-    }
-    case "ACTION": {
-      const humanPlayer = players.find((p) => p.id !== AI_PLAYER_ID);
-      const actions = AI.getBestActions(aiPlayer, humanPlayer, players, asteroids);
-      for (const action of actions) {
-        if (selectedShip?.id !== AI_PLAYER_ID) selectShip(aiPlayer);
-        await handleAction(action);
-        await sleep(600);
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function runAITurn() {
+    if (
+      gameState.winner ||
+      gameMode !== "ai" ||
+      gameState.turn !== AI_PLAYER_ID
+    )
+      return;
+
+    deselectAll();
+    const aiPlayer = players.find((p) => p.id === AI_PLAYER_ID);
+    if (aiPlayer?.container) selectShip(aiPlayer);
+
+    await sleep(800);
+
+    switch (gameState.phase) {
+      case "SETUP_PLACE_SHIP":
+      case "SETUP_PLACE_ASTEROID": {
+        const { x, y } = AI.getBestPlacement(players, asteroids);
+        runSetup(x, y);
+        break;
       }
-      await sleep(500);
-      if (gameState.phase === "ACTION") endPlayerTurn();
-      break;
+      case "SETUP_ORIENT": {
+        const humanPlayer = players.find((p) => p.id !== AI_PLAYER_ID);
+        const orientation = AI.getBestOrientation(aiPlayer, humanPlayer);
+        aiPlayer.orientation = orientation;
+        updateShipGraphics(aiPlayer);
+        await sleep(500);
+        runSetup();
+        break;
+      }
+      case "ACTION": {
+        const humanPlayer = players.find((p) => p.id !== AI_PLAYER_ID);
+        const actions = AI.getBestActions(
+          aiPlayer,
+          humanPlayer,
+          players,
+          asteroids,
+        );
+        for (const action of actions) {
+          if (selectedShip?.id !== AI_PLAYER_ID) selectShip(aiPlayer);
+          await handleAction(action);
+          await sleep(600);
+        }
+        await sleep(500);
+        if (gameState.phase === "ACTION") endPlayerTurn();
+        break;
+      }
     }
   }
-}
 
   async function handleAction(actionType, value) {
     if (
@@ -702,11 +723,11 @@ async function runAITurn() {
       moves[0].finalPos.y === moves[1].finalPos.y;
     if (pathsIntersect || endOnSameSquare) {
       if (p1.hp > p2.hp) {
-        endGame(p1);
+        endGame(p1, "Won a Ship Collision");
         return;
       }
       if (p2.hp > p1.hp) {
-        endGame(p2);
+        endGame(p2, "Won a Ship Collision");
         return;
       }
       if (p1.hp === p2.hp) {
@@ -771,15 +792,27 @@ async function runAITurn() {
   function checkWinConditions() {
     if (gameState.winner) return;
     players.forEach((p) => {
-      if (p.hp <= 0) endGame(players.find((winner) => winner.id !== p.id));
-      if (p.asteroidsCaptured >= 2) endGame(p);
+      if (p.hp <= 0) {
+        endGame(
+          players.find((winner) => winner.id !== p.id),
+          "Enemy Ship Destroyed",
+        );
+      }
+      if (p.asteroidsCaptured >= 2) {
+        endGame(p, "Captured Two Asteroids");
+      }
     });
   }
 
-  function endGame(winner) {
+  function endGame(winner, reason) {
     if (gameState.winner || !winner) return;
     gameState.winner = winner;
-    winnerTextEl.textContent = `Player ${winner.id + 1} Wins!`;
+
+    const reasonText = reason
+      ? `<br><span style="font-size: 1.5rem; color: #ccc; font-weight: normal;">${reason}</span>`
+      : "";
+    winnerTextEl.innerHTML = `Player ${winner.id + 1} Wins!${reasonText}`;
+
     winnerModalEl.classList.remove("hidden");
     deselectAll();
   }
@@ -848,32 +881,43 @@ async function runAITurn() {
         }
         break;
       case "ACTION":
-        if (gameState.subPhase === "ORIENT_CHOICE")
-          statusText = `Player ${gameState.turn + 1}, choose new orientation.`;
-        else statusText = `Player ${gameState.turn + 1}'s Turn`;
+        statusText =
+          gameState.subPhase === "ORIENT_CHOICE"
+            ? `Player ${gameState.turn + 1}, re-orient.`
+            : `Player ${gameState.turn + 1}'s Turn`;
         break;
       case "MOVEMENT":
         statusText = "Movement Phase";
         break;
     }
     gameStatusEl.textContent = statusText;
+
     if (selectedShip && gameState.phase === "ACTION")
       actionsLeftEl.textContent = selectedShip.actionsLeft;
-    const pInfo = players
-      .map((p) => {
-        const data = p.container
-          ? p
-          : { id: p.id, hp: 6, speed: p.speed, asteroidsCaptured: 0 };
-        const isTurn =
-          (gameState.phase.includes("SETUP") || gameState.phase === "ACTION") &&
-          data.id === gameState.turn;
-        return `<div class="p-3 rounded ${isTurn ? "bg-cyan-900/50" : "bg-gray-700"}">
-                        <h4 class="font-bold text-lg ${data.id === 0 ? "text-red-400" : "text-blue-400"}">Player ${data.id + 1}</h4>
-                        <p>HP: ${data.hp} | Speed: ${data.speed}</p> <p>Asteroids: ${data.asteroidsCaptured}</p>
-                    </div>`;
-      })
-      .join("");
-    playerInfoEl.innerHTML = pInfo;
+
+    const pData = [0, 1].map((id) => {
+      let p = players.find((player) => player.id === id && player.container);
+      if (p)
+        return {
+          hp: p.hp,
+          speed: p.speed,
+          asteroidsCaptured: p.asteroidsCaptured,
+        };
+      let placeholder = players.find((pl) => pl.id === id);
+      return {
+        hp: 6,
+        speed: placeholder ? placeholder.speed : "?",
+        asteroidsCaptured: 0,
+      };
+    });
+
+    p1InfoTopEl.innerHTML = `P1 &nbsp; ❤️ ${pData[0].hp} &nbsp; ⚡️ ${pData[0].speed} &nbsp; ☄️ ${pData[0].asteroidsCaptured}`;
+    p2InfoTopEl.innerHTML = `P2 &nbsp; ❤️ ${pData[1].hp} &nbsp; ⚡️ ${pData[1].speed} &nbsp; ☄️ ${pData[1].asteroidsCaptured}`;
+
+    const isTurnPhase =
+      gameState.phase.includes("SETUP") || gameState.phase === "ACTION";
+    p1InfoTopEl.classList.toggle("active", isTurnPhase && gameState.turn === 0);
+    p2InfoTopEl.classList.toggle("active", isTurnPhase && gameState.turn === 1);
   }
   //initGame();
 })();

@@ -1,4 +1,4 @@
-# Roll-for-Laser
+# Crossfire
 
 ### Game Overview
 
@@ -6,7 +6,7 @@ A two-player tactical game of spaceship combat on an 8x8 grid. Players maneuver 
 
 ### Components
 
-- 1 8x8 board
+- 8x8 board
 - 4 player dice (distinguishable colors, e.g., two of each blue and red) representing ships.
 - 3 neutral dice (e.g., brown) representing asteroids.
 
