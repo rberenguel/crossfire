@@ -11,7 +11,7 @@ I'm still not sure if it's fun or not, this is why I wrote this web-based protot
 
 ## Rules
 
-You can find the rules in []`rules.md`](https://github.com/rberenguel/crossfire/blob/gh-pages/rules.md).
+You can find the rules in [`rules.md`](https://github.com/rberenguel/crossfire/blob/gh-pages/rules.md).
 
 TL;DR:
 
