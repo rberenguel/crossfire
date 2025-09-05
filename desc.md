@@ -6,7 +6,7 @@ The game is played in a 8x8 board, potentially a reused checkers/checkboard.
 
 Playing the game requires 6-sided dies, 2 for the players (blue and red for example), and 3 more, brown. Also a paper or similar to write down hull strength later.
 
-The game starts with both players choosing a color and rolling their dice. The largest roll gets first move, let's call it player 1. Both ships start with 6 points of hull strength. Hull strength is also 
+The game starts with both players choosing a color and rolling their dice. The largest roll gets first move, let's call it player 1. Both ships start with 6 points of hull strength. Hull strength is also
 
 Player 1 chooses where to place her dice, which represents a spaceship, in any unoccupied square in the board. Player 2 does likewise. The rolled number needs to be visible. If the number is lower than 3, it becomes 3.
 
@@ -15,6 +15,7 @@ Player 1 now rolls an asteroid dice and chooses where to place it. Player 2 does
 Once all asteroids are placed, players choose what is the initial orientation of their ship. The number they have is their current speed, and orientation is one of the primary positions inside the square (N, W, S, E, NW, NE, etc). Can't be center. Once both have chosen, the first turn triggers, which moves (simultaneously) both ships in the direction they are facing.
 
 Now, they alternate turns. In each turn they can take two actions, to choose from. Each of these can only be chosen once, i.e. you can't turn twice, or fire twice:
+
 - fire in the direction they are facing
 - accelerate or decelerate 1 point
 - change direction, they can only change direction to the ones closest to the left and right to the one they have right now (i.e. 45 degree increments) unless their speed is 1,then any direction is valid.
