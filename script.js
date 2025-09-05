@@ -1,6 +1,7 @@
 // --- CONFIG ---
 const BOARD_SIZE = 8;
-const CELL_SIZE = 60;
+const ORIGINAL_CELL_SIZE = 60; // Base size for scaling calculations
+let CELL_SIZE = 60; // This will be updated dynamically
 const GRID_COLOR = 0x00ffff;
 const SHIP_COLORS = [0xff4444, 0x4444ff]; // Red, Blue
 
@@ -10,9 +11,7 @@ const canvasContainer = document.getElementById("pixi-canvas");
 (async () => {
   const app = new PIXI.Application();
   await app.init({
-    width: BOARD_SIZE * CELL_SIZE,
-    height: BOARD_SIZE * CELL_SIZE,
-    backgroundColor: 0x0a0a2a,
+    backgroundColor: 0x111827,
     antialias: true,
     autoDensity: true,
     resolution: window.devicePixelRatio || 1,
@@ -24,20 +23,76 @@ const canvasContainer = document.getElementById("pixi-canvas");
 
   // --- UI ELEMENTS ---
   const gameStatusEl = document.getElementById("game-status");
-  const p1InfoTopEl = document.getElementById("p1-info-top"); // ADD THIS
-  const p2InfoTopEl = document.getElementById("p2-info-top"); // ADD THIS
+  const p1InfoTopEl = document.getElementById("p1-info-top");
+  const p2InfoTopEl = document.getElementById("p2-info-top");
   const actionsPanelEl = document.getElementById("actions-panel");
   const orientationPanelEl = document.getElementById("orientation-panel");
   const orientationTitleEl = document.getElementById("orientation-title");
   const actionsLeftEl = document.getElementById("actions-left");
   const winnerModalEl = document.getElementById("winner-modal");
   const winnerTextEl = document.getElementById("winner-text");
+  const gameSetupModalEl = document.getElementById("game-setup-modal");
 
-  const gameSetupModalEl = document.getElementById("game-setup-modal"); // Add this
+  // --- RESIZE LOGIC ---
+  let grid; // To hold the grid graphics object
+  function redrawAll() {
+    if (!grid) return;
+    grid.clear();
 
-  // Add these config variables
+    for (let i = 0; i <= BOARD_SIZE; i++) {
+      grid
+        .moveTo(i * CELL_SIZE, 0)
+        .lineTo(i * CELL_SIZE, BOARD_SIZE * CELL_SIZE);
+      grid
+        .moveTo(0, i * CELL_SIZE)
+        .lineTo(BOARD_SIZE * CELL_SIZE, i * CELL_SIZE);
+    }
+    grid.stroke({ color: GRID_COLOR, alpha: 0.2, width: 1 });
+    const allObjects = (players || []).concat(asteroids || []);
+    allObjects.forEach((obj) => {
+      if (obj && obj.container && !obj.container.destroyed) {
+        const newScale = CELL_SIZE / ORIGINAL_CELL_SIZE;
+        obj.container.x = obj.x * CELL_SIZE + CELL_SIZE / 2;
+        obj.container.y = obj.y * CELL_SIZE + CELL_SIZE / 2;
+        obj.container.scale.set(newScale);
+      }
+    });
+  }
+
+  function resizeCanvas() {
+    const topBar = document.querySelector(".top-bar");
+    const actionsContainer = document.querySelector(".actions-container");
+    const gameWrapper = document.querySelector(".game-wrapper");
+
+    // Calculate total height of fixed UI elements
+    const uiHeight = topBar.offsetHeight + actionsContainer.offsetHeight;
+    const verticalGap = 16; // 1rem gap
+
+    const availableHeight =
+      gameWrapper.clientHeight - uiHeight - verticalGap * 2;
+    const availableWidth = gameWrapper.clientWidth;
+
+    const canvasSize = Math.floor(Math.min(availableHeight, availableWidth));
+
+    if (canvasSize <= 0 || !app.renderer) return;
+
+    app.renderer.resize(canvasSize, canvasSize);
+    // Center the canvas view (important if canvas is smaller than container)
+    app.view.style.width = `${canvasSize}px`;
+    app.view.style.height = `${canvasSize}px`;
+
+    CELL_SIZE = canvasSize / BOARD_SIZE;
+    redrawAll();
+  }
+  window.addEventListener("resize", resizeCanvas);
+
+  // --- GAME STATE & OTHER VARIABLES ---
   let gameMode = "human";
   const AI_PLAYER_ID = 1;
+  let gameState;
+  let players;
+  let asteroids;
+  let selectedShip = null;
 
   document
     .getElementById("btn-fire")
@@ -55,21 +110,18 @@ const canvasContainer = document.getElementById("pixi-canvas");
     .getElementById("btn-turn-right")
     .addEventListener("click", () => handleAction("turnRight"));
   document.getElementById("btn-end-turn").addEventListener("click", () => {
-    if (selectedShip && gameState.phase === "ACTION") {
-      endPlayerTurn();
-    }
+    if (selectedShip && gameState.phase === "ACTION") endPlayerTurn();
   });
   document.getElementById("btn-restart").addEventListener("click", () => {
     winnerModalEl.classList.add("hidden");
     gameSetupModalEl.classList.remove("hidden");
-    app.stage.removeChildren(); // Clear the board
+    app.stage.removeChildren();
   });
   document.querySelectorAll(".orient-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const orient = parseInt(e.target.dataset.orient);
-      if (gameState.phase === "SETUP_ORIENT") {
-        handleAction("orient", orient);
-      } else if (
+      if (gameState.phase === "SETUP_ORIENT") handleAction("orient", orient);
+      else if (
         gameState.phase === "ACTION" &&
         gameState.subPhase === "ORIENT_CHOICE" &&
         selectedShip
@@ -95,20 +147,15 @@ const canvasContainer = document.getElementById("pixi-canvas");
     gameSetupModalEl.classList.add("hidden");
     initGame();
   });
-  document.getElementById("btn-rules").addEventListener("click", () => {
-    // This function is defined in rules.js
-    showRules("rules-modal", "rules-content", "rules.md");
-  });
+  document
+    .getElementById("btn-rules")
+    .addEventListener("click", () =>
+      showRules("rules-modal", "rules-content", "rules.md"),
+    );
   document.getElementById("btn-close-rules").addEventListener("click", () => {
     document.getElementById("rules-modal").classList.add("hidden");
   });
-  // --- GAME STATE ---
-  let gameState;
-  let players;
-  let asteroids;
-  let selectedShip = null;
 
-  // --- GAME OBJECTS & LOGIC ---
   const directions = [
     { x: 1, y: 0 },
     { x: 1, y: -1 },
@@ -178,11 +225,11 @@ const canvasContainer = document.getElementById("pixi-canvas");
     }
     update() {
       this.life++;
-      if (this.life <= this.maxLife / 2) {
+      if (this.life <= this.maxLife / 2)
         this.alpha = this.life / (this.maxLife / 2);
-      } else if (this.life > this.maxLife / 2 && this.life <= this.maxLife) {
+      else if (this.life > this.maxLife / 2 && this.life <= this.maxLife)
         this.alpha = (this.maxLife - this.life) / (this.maxLife / 2);
-      } else {
+      else {
         PIXI.Ticker.shared.remove(this.update, this);
         this.destroy();
       }
@@ -209,10 +256,6 @@ const canvasContainer = document.getElementById("pixi-canvas");
       turnDelta: 0,
     };
     ship.container = new PIXI.Container();
-    ship.container.x = x * CELL_SIZE + CELL_SIZE / 2;
-    ship.container.y = y * CELL_SIZE + CELL_SIZE / 2;
-    ship.container.eventMode = "static";
-    ship.container.cursor = "pointer";
     const lynxVertices = [
       [-70, 50],
       [70, 0],
@@ -220,46 +263,43 @@ const canvasContainer = document.getElementById("pixi-canvas");
       [-30, 0],
       [-70, 50],
     ];
-    const scale = CELL_SIZE / 180;
+    const scale = ORIGINAL_CELL_SIZE / 180;
     ship.shapeData = lynxVertices.flat().map((v) => v * scale);
     const body = new PIXI.Graphics()
       .poly(ship.shapeData)
       .fill({ color: SHIP_COLORS[id] });
     const border = new PIXI.Graphics();
     border.name = "border";
-
     const hpTextStyle = new PIXI.TextStyle({
-      fill: "#67e8f9", // Cyan for HP
+      fill: "#67e8f9",
       fontSize: 28,
       fontWeight: "bold",
       stroke: { color: "#000000", width: 5, join: "round" },
     });
     const speedTextStyle = new PIXI.TextStyle({
-      fill: "#ffffff", // White for Speed
+      fill: "#ffffff",
       fontSize: 22,
       fontWeight: "bold",
       stroke: { color: "#000000", width: 4, join: "round" },
     });
-
     ship.hpText = new PIXI.Text({ text: String(ship.hp), style: hpTextStyle });
     ship.hpText.anchor.set(0.5);
-
     ship.speedText = new PIXI.Text({
       text: String(ship.speed),
       style: speedTextStyle,
     });
     ship.speedText.anchor.set(0.5);
-    ship.speedText.x = -CELL_SIZE * 0.25;
-
+    ship.speedText.x = -ORIGINAL_CELL_SIZE * 0.25;
     ship.container.addChild(body, ship.hpText, ship.speedText, border);
     app.stage.addChild(ship.container);
+    ship.container.eventMode = "static";
+    ship.container.cursor = "pointer";
     ship.container.on("pointerdown", (event) => {
       event.stopPropagation();
       selectShip(ship);
     });
     return ship;
   }
-
   function generateAsteroidVertices(size, sides) {
     let path = [];
     const a = (Math.PI * 2) / sides;
@@ -270,13 +310,10 @@ const canvasContainer = document.getElementById("pixi-canvas");
     }
     return path;
   }
-
   function createAsteroid(x, y, hp) {
     const asteroid = { hp, x, y, container: null, text: null };
     asteroid.container = new PIXI.Container();
-    asteroid.container.x = x * CELL_SIZE + CELL_SIZE / 2;
-    asteroid.container.y = y * CELL_SIZE + CELL_SIZE / 2;
-    const vertices = generateAsteroidVertices(CELL_SIZE / 2.5, 9);
+    const vertices = generateAsteroidVertices(ORIGINAL_CELL_SIZE / 2.5, 9);
     const body = new PIXI.Graphics().poly(vertices.flat()).fill(0x964b00);
     const textStyle = new PIXI.TextStyle({
       fill: "white",
@@ -292,14 +329,12 @@ const canvasContainer = document.getElementById("pixi-canvas");
     app.stage.addChild(asteroid.container);
     return asteroid;
   }
-
   function showDamageEffect(targetShip) {
     const shipBody = targetShip.container.children[0];
     shipBody.tint = 0xff0000;
     setTimeout(() => {
       shipBody.tint = 0xffffff;
     }, 300);
-
     const damageTextStyle = new PIXI.TextStyle({
       fill: "#ff4d4d",
       fontSize: 28,
@@ -311,7 +346,6 @@ const canvasContainer = document.getElementById("pixi-canvas");
     damageText.x = targetShip.container.x;
     damageText.y = targetShip.container.y - CELL_SIZE / 2;
     app.stage.addChild(damageText);
-
     let life = 60;
     const tickerCallback = () => {
       damageText.y -= 0.75;
@@ -324,7 +358,6 @@ const canvasContainer = document.getElementById("pixi-canvas");
     };
     app.ticker.add(tickerCallback);
   }
-
   function updateShipGraphics(ship) {
     if (!ship || !ship.container || ship.container.destroyed) return;
     ship.hpText.text = String(ship.hp);
@@ -335,21 +368,13 @@ const canvasContainer = document.getElementById("pixi-canvas");
     ship.speedText.rotation = -ship.container.rotation;
     updateUI();
   }
-
   function isOccupied(x, y, objects) {
     return objects.some((c) => c.x === x && c.y === y);
   }
-
   function initGame() {
     app.stage.removeChildren();
-    const grid = new PIXI.Graphics();
-    for (let i = 0; i <= BOARD_SIZE; i++) {
-      grid
-        .rect(i * CELL_SIZE, 0, 1, BOARD_SIZE * CELL_SIZE)
-        .rect(0, i * CELL_SIZE, BOARD_SIZE * CELL_SIZE, 1);
-    }
-    grid.fill({ color: GRID_COLOR, alpha: 0.2 });
-    app.stage.addChild(grid);
+    grid = new PIXI.Graphics();
+    app.stage.addChild(grid); // Store grid globally
     gameState = {
       phase: "SETUP_ROLL",
       turn: 0,
@@ -361,22 +386,22 @@ const canvasContainer = document.getElementById("pixi-canvas");
     players = [];
     asteroids = [];
     selectedShip = null;
-    updateUI(); // This will show "Rolling for first player..."
-    setTimeout(runSetup, 500); // And this will kick off the setup process
+    updateUI();
+    // Use requestAnimationFrame to ensure layout is calculated before resizing
+    requestAnimationFrame(() => {
+      resizeCanvas();
+      runSetup();
+    });
   }
-
   function handleCanvasClick(event) {
     if (gameMode === "ai" && gameState.turn === AI_PLAYER_ID) return;
     const x = Math.floor(event.global.x / CELL_SIZE);
     const y = Math.floor(event.global.y / CELL_SIZE);
     if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) return;
     if (gameState.phase.startsWith("SETUP_PLACE_")) {
-      if (!isOccupied(x, y, players.concat(asteroids))) {
-        runSetup(x, y);
-      }
+      if (!isOccupied(x, y, players.concat(asteroids))) runSetup(x, y);
     }
   }
-
   function runSetup(arg1, arg2) {
     switch (gameState.phase) {
       case "SETUP_ROLL":
@@ -412,22 +437,19 @@ const canvasContainer = document.getElementById("pixi-canvas");
       case "SETUP_ORIENT":
         gameState.setupSubPhase++;
         gameState.turn = (gameState.turn + 1) % 2;
-        if (gameState.setupSubPhase === 2) {
-          startTurn(gameState.firstMoverId);
-        }
+        if (gameState.setupSubPhase === 2) startTurn(gameState.firstMoverId);
         break;
     }
     updateUI();
+    redrawAll(); // Redraw after setup changes
     if (
       gameMode === "ai" &&
       gameState.turn === AI_PLAYER_ID &&
       !gameState.winner &&
       gameState.phase.startsWith("SETUP_")
-    ) {
+    )
       setTimeout(runAITurn, 1000);
-    }
   }
-
   function selectShip(ship) {
     if (gameState.phase === "ACTION" && ship.id !== gameState.turn) return;
     deselectAll();
@@ -436,7 +458,6 @@ const canvasContainer = document.getElementById("pixi-canvas");
     border.stroke({ width: 4, color: 0x00ffff, alpha: 1 }).poly(ship.shapeData);
     updateUIPanels();
   }
-
   function deselectAll() {
     players.forEach((p) => {
       if (p.container) p.container.getChildByName("border")?.clear();
@@ -444,7 +465,6 @@ const canvasContainer = document.getElementById("pixi-canvas");
     selectedShip = null;
     updateUIPanels();
   }
-
   function startTurn(playerId) {
     gameState.phase = "ACTION";
     gameState.subPhase = null;
@@ -454,20 +474,14 @@ const canvasContainer = document.getElementById("pixi-canvas");
     currentPlayer.actionsTakenThisTurn = [];
     currentPlayer.orientationAtTurnStart = currentPlayer.orientation;
     currentPlayer.turnDelta = 0;
-
-    // Automatically select the current player's ship
     selectShip(currentPlayer);
-
     updateUI();
-    if (gameMode === "ai" && playerId === AI_PLAYER_ID && !gameState.winner) {
+    if (gameMode === "ai" && playerId === AI_PLAYER_ID && !gameState.winner)
       setTimeout(runAITurn, 1000);
-    }
   }
-
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
-
   async function runAITurn() {
     if (
       gameState.winner ||
@@ -475,13 +489,10 @@ const canvasContainer = document.getElementById("pixi-canvas");
       gameState.turn !== AI_PLAYER_ID
     )
       return;
-
     deselectAll();
     const aiPlayer = players.find((p) => p.id === AI_PLAYER_ID);
     if (aiPlayer?.container) selectShip(aiPlayer);
-
     await sleep(800);
-
     switch (gameState.phase) {
       case "SETUP_PLACE_SHIP":
       case "SETUP_PLACE_ASTEROID": {
@@ -517,7 +528,6 @@ const canvasContainer = document.getElementById("pixi-canvas");
       }
     }
   }
-
   async function handleAction(actionType, value) {
     if (
       !selectedShip ||
@@ -527,14 +537,12 @@ const canvasContainer = document.getElementById("pixi-canvas");
     )
       return;
     const ship = selectedShip;
-
     if (
       gameState.phase === "ACTION" &&
       gameState.subPhase !== "ORIENT_CHOICE"
     ) {
       const typeKey = actionTypes[actionType];
       const isFirstActionOfType = !ship.actionsTakenThisTurn.includes(typeKey);
-
       switch (actionType) {
         case "fire":
           if (isFirstActionOfType && ship.actionsLeft > 0) {
@@ -566,9 +574,8 @@ const canvasContainer = document.getElementById("pixi-canvas");
           break;
         case "turnLeft":
           if (ship.speed === 1) {
-            if (isFirstActionOfType && ship.actionsLeft > 0) {
+            if (isFirstActionOfType && ship.actionsLeft > 0)
               gameState.subPhase = "ORIENT_CHOICE";
-            }
           } else {
             if (isFirstActionOfType && ship.actionsLeft > 0) {
               ship.actionsLeft--;
@@ -586,9 +593,8 @@ const canvasContainer = document.getElementById("pixi-canvas");
           break;
         case "turnRight":
           if (ship.speed === 1) {
-            if (isFirstActionOfType && ship.actionsLeft > 0) {
+            if (isFirstActionOfType && ship.actionsLeft > 0)
               gameState.subPhase = "ORIENT_CHOICE";
-            }
           } else {
             if (isFirstActionOfType && ship.actionsLeft > 0) {
               ship.actionsLeft--;
@@ -610,29 +616,22 @@ const canvasContainer = document.getElementById("pixi-canvas");
       selectedShip.orientation = value;
       runSetup();
     }
-
     updateShipGraphics(ship);
   }
-
   function endPlayerTurn() {
     const secondMoverId = 1 - gameState.firstMoverId;
-    if (gameState.turn === gameState.firstMoverId) {
-      startTurn(secondMoverId);
-    } else {
-      startMovementPhase();
-    }
+    if (gameState.turn === gameState.firstMoverId) startTurn(secondMoverId);
+    else startMovementPhase();
   }
-
   async function fireLaser(ship) {
     const shipAngleRad = directionAngle[ship.orientation] * (Math.PI / 180);
     const tipOffset = CELL_SIZE / 2.5;
     const startX = ship.container.x + Math.cos(shipAngleRad) * tipOffset;
     const startY = ship.container.y + Math.sin(shipAngleRad) * tipOffset;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 5; i++)
       app.stage.addChild(
         new FireParticle(SHIP_COLORS[ship.id], startX, startY, shipAngleRad),
       );
-    }
     app.stage.addChild(
       new LaserBeam(
         SHIP_COLORS[ship.id],
@@ -674,21 +673,18 @@ const canvasContainer = document.getElementById("pixi-canvas");
     updateUI();
     checkWinConditions();
   }
-
   function enforceGoldenRule(ship) {
     if (ship.speed > ship.hp) {
       ship.speed = ship.hp;
       updateShipGraphics(ship);
     }
   }
-
   function captureAsteroid(ship, asteroid) {
     ship.asteroidsCaptured++;
     if (asteroid.container && !asteroid.container.destroyed)
       app.stage.removeChild(asteroid.container);
     asteroids.splice(asteroids.indexOf(asteroid), 1);
   }
-
   function startMovementPhase() {
     gameState.phase = "MOVEMENT";
     updateUI();
@@ -711,7 +707,6 @@ const canvasContainer = document.getElementById("pixi-canvas");
     });
     resolveMovement(moves);
   }
-
   async function resolveMovement(moves) {
     const p1 = moves[0].player,
       p2 = moves[1].player;
@@ -730,9 +725,7 @@ const canvasContainer = document.getElementById("pixi-canvas");
         endGame(p2, "Won a Ship Collision");
         return;
       }
-      if (p1.hp === p2.hp) {
-        p1.isPhasing = p2.isPhasing = true;
-      }
+      if (p1.hp === p2.hp) p1.isPhasing = p2.isPhasing = true;
     }
     for (const move of moves) {
       let stopped = false;
@@ -781,42 +774,32 @@ const canvasContainer = document.getElementById("pixi-canvas");
           updateShipGraphics(p);
         });
         checkWinConditions();
-        if (!gameState.winner) {
-          startTurn(gameState.firstMoverId);
-        }
+        if (!gameState.winner) startTurn(gameState.firstMoverId);
       }
     };
     ticker.add(animation);
   }
-
   function checkWinConditions() {
     if (gameState.winner) return;
     players.forEach((p) => {
-      if (p.hp <= 0) {
+      if (p.hp <= 0)
         endGame(
           players.find((winner) => winner.id !== p.id),
           "Enemy Ship Destroyed",
         );
-      }
-      if (p.asteroidsCaptured >= 2) {
-        endGame(p, "Captured Two Asteroids");
-      }
+      if (p.asteroidsCaptured >= 2) endGame(p, "Captured Two Asteroids");
     });
   }
-
   function endGame(winner, reason) {
     if (gameState.winner || !winner) return;
     gameState.winner = winner;
-
     const reasonText = reason
       ? `<br><span style="font-size: 1.5rem; color: #ccc; font-weight: normal;">${reason}</span>`
       : "";
     winnerTextEl.innerHTML = `Player ${winner.id + 1} Wins!${reasonText}`;
-
     winnerModalEl.classList.remove("hidden");
     deselectAll();
   }
-
   function updateUIPanels() {
     const isActionPhase = gameState.phase === "ACTION";
     const showActions =
@@ -836,12 +819,10 @@ const canvasContainer = document.getElementById("pixi-canvas");
     if (showActionOrient) orientationTitleEl.textContent = "Re-orient Ship";
     if (showActions) updateActionButtons();
   }
-
   function updateActionButtons() {
     if (!selectedShip) return;
     const actionsTaken = selectedShip.actionsTakenThisTurn;
     const noActionsLeft = selectedShip.actionsLeft <= 0;
-
     document.getElementById("btn-fire").disabled =
       noActionsLeft || actionsTaken.includes("fire");
     document.getElementById("btn-accel").disabled =
@@ -857,7 +838,6 @@ const canvasContainer = document.getElementById("pixi-canvas");
     document.getElementById("btn-turn-right").disabled =
       noActionsLeft && !actionsTaken.includes("turn");
   }
-
   function updateUI() {
     if (gameState.winner) {
       gameStatusEl.textContent = `Player ${gameState.winner.id + 1} Won!`;
@@ -876,9 +856,8 @@ const canvasContainer = document.getElementById("pixi-canvas");
         break;
       case "SETUP_ORIENT":
         statusText = `Player ${gameState.turn + 1}, choose orientation.`;
-        if (!selectedShip || selectedShip.id !== gameState.turn) {
+        if (!selectedShip || selectedShip.id !== gameState.turn)
           selectShip(players.find((p) => p.id === gameState.turn));
-        }
         break;
       case "ACTION":
         statusText =
@@ -891,10 +870,8 @@ const canvasContainer = document.getElementById("pixi-canvas");
         break;
     }
     gameStatusEl.textContent = statusText;
-
     if (selectedShip && gameState.phase === "ACTION")
       actionsLeftEl.textContent = selectedShip.actionsLeft;
-
     const pData = [0, 1].map((id) => {
       let p = players.find((player) => player.id === id && player.container);
       if (p)
@@ -910,14 +887,11 @@ const canvasContainer = document.getElementById("pixi-canvas");
         asteroidsCaptured: 0,
       };
     });
-
     p1InfoTopEl.innerHTML = `P1 &nbsp; ❤️ ${pData[0].hp} &nbsp; ⚡️ ${pData[0].speed} &nbsp; ☄️ ${pData[0].asteroidsCaptured}`;
     p2InfoTopEl.innerHTML = `P2 &nbsp; ❤️ ${pData[1].hp} &nbsp; ⚡️ ${pData[1].speed} &nbsp; ☄️ ${pData[1].asteroidsCaptured}`;
-
     const isTurnPhase =
       gameState.phase.includes("SETUP") || gameState.phase === "ACTION";
     p1InfoTopEl.classList.toggle("active", isTurnPhase && gameState.turn === 0);
     p2InfoTopEl.classList.toggle("active", isTurnPhase && gameState.turn === 1);
   }
-  //initGame();
 })();

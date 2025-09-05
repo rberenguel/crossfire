@@ -2,7 +2,7 @@
 
 I was listening to a podcast this morning (Friday, Sept 5, 2025) and somehow thought
 
->  _I wonder if [Destrier](https://github.com/rberenguel/destrier) could be a boardgame?_
+> _I wonder if [Destrier](https://github.com/rberenguel/destrier) could be a boardgame?_
 
 ---
 

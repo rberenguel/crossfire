@@ -21,11 +21,12 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start; /* MODIFIED */
   height: 100vh;
   margin: 0;
   padding: 1rem;
   overflow: hidden;
+  box-sizing: border-box; /* ADDED */
 }
 .titlefonted {
   font-family: "Sixtyfour";
@@ -55,21 +56,26 @@ body {
 /* --- Main Layout --- */
 .game-wrapper {
   width: 100%;
-  max-width: 480px; /* 8 cells * 60px */
+  max-width: 500px; /* MODIFIED from 480px for a bit more space */
+  height: 100%; /* ADDED */
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
 #pixi-canvas {
-  width: 100%;
-  aspect-ratio: 1 / 1;
+  display: flex; /* ADDED */
+  justify-content: center; /* ADDED */
+  min-height: 0; /* ADDED - Flexbox fix */
   border-radius: 0.5rem;
   overflow: hidden;
   box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
 }
 
 /* --- Top Info Bar --- */
+.top-bar {
+  flex-shrink: 0; /* ADDED */
+}
 .top-bar .player-stats {
   display: flex;
   justify-content: space-between;
@@ -111,6 +117,7 @@ body {
 
 /* --- Actions & Orientation --- */
 .actions-container {
+  flex-shrink: 0; /* ADDED */
   background-color: var(--secondary);
   padding: 1rem;
   border-radius: 0.5rem;
@@ -122,6 +129,7 @@ body {
   gap: 0.5rem;
 }
 .panel h3 {
+  margin-top: 0; /* ADDED */
   font-size: 1.25rem;
   font-weight: 600;
   text-align: center;
@@ -190,6 +198,7 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 50;
+  padding: 1rem; /* ADDED */
 }
 .modal-content {
   background-color: var(--secondary);
@@ -198,11 +207,14 @@ body {
   text-align: center;
   box-shadow: 0 10px 15px var(--shadow-color);
   border: 1px solid var(--primary);
+  width: 100%; /* ADDED */
+  max-width: 400px; /* ADDED */
 }
 .modal-content h1,
 .modal-content h2 {
   font-size: 2rem;
   font-weight: 700;
+  margin-top: 0; /* ADDED */
   margin-bottom: 1.5rem;
   color: var(--text-cyan);
 }
@@ -218,11 +230,10 @@ body {
   max-height: 80vh;
   overflow-y: auto;
   border: 1px solid var(--primary);
-
-  max-width: 600px; /* Constrains width */
-  width: 90%; /* Responsive width for small screens */
-  scrollbar-width: none; /* Hides scrollbar for Firefox */
-  -ms-overflow-style: none; /* Hides scrollbar for IE/Edge */
+  max-width: 600px;
+  width: 90%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .rules-modal-content::-webkit-scrollbar {
@@ -252,7 +263,7 @@ body {
 }
 .rules-modal-content ul,
 .rules-modal-content ol {
-  margin-left: 1.5rem;
+  padding-left: 1.5rem; /* MODIFIED from margin-left */
 }
 .rules-modal-content strong {
   color: #c60;
