@@ -574,8 +574,13 @@ const canvasContainer = document.getElementById("pixi-canvas");
           break;
         case "turnLeft":
           if (ship.speed === 1) {
-            if (isFirstActionOfType && ship.actionsLeft > 0)
+            // Allow re-orienting if the 'turn' action has already been used this turn
+            if (
+              (isFirstActionOfType && ship.actionsLeft > 0) ||
+              ship.actionsTakenThisTurn.includes("turn")
+            ) {
               gameState.subPhase = "ORIENT_CHOICE";
+            }
           } else {
             if (isFirstActionOfType && ship.actionsLeft > 0) {
               ship.actionsLeft--;
@@ -593,8 +598,13 @@ const canvasContainer = document.getElementById("pixi-canvas");
           break;
         case "turnRight":
           if (ship.speed === 1) {
-            if (isFirstActionOfType && ship.actionsLeft > 0)
+            // Allow re-orienting if the 'turn' action has already been used this turn
+            if (
+              (isFirstActionOfType && ship.actionsLeft > 0) ||
+              ship.actionsTakenThisTurn.includes("turn")
+            ) {
               gameState.subPhase = "ORIENT_CHOICE";
+            }
           } else {
             if (isFirstActionOfType && ship.actionsLeft > 0) {
               ship.actionsLeft--;
@@ -628,48 +638,90 @@ const canvasContainer = document.getElementById("pixi-canvas");
     const tipOffset = CELL_SIZE / 2.5;
     const startX = ship.container.x + Math.cos(shipAngleRad) * tipOffset;
     const startY = ship.container.y + Math.sin(shipAngleRad) * tipOffset;
-    for (let i = 0; i < 5; i++)
+
+    // Create muzzle flash effect
+    for (let i = 0; i < 5; i++) {
       app.stage.addChild(
         new FireParticle(SHIP_COLORS[ship.id], startX, startY, shipAngleRad),
       );
+    }
+
+    // --- MODIFICATION START ---
+
+    let laserLength = BOARD_SIZE * CELL_SIZE * 1.5; // Default max length
+    let collisionTarget = null;
+    let collisionType = null;
+
+    // 1. Find the first object in the line of fire
+    for (let i = 1; i < BOARD_SIZE * 2; i++) {
+      const checkX = ship.x + directions[ship.orientation].x * i;
+      const checkY = ship.y + directions[ship.orientation].y * i;
+
+      // Stop if the check goes off the board
+      if (
+        checkX < 0 ||
+        checkX >= BOARD_SIZE ||
+        checkY < 0 ||
+        checkY >= BOARD_SIZE
+      ) {
+        break;
+      }
+
+      const otherPlayer = players.find(
+        (p) => p.id !== ship.id && p.x === checkX && p.y === checkY,
+      );
+      if (otherPlayer) {
+        collisionTarget = otherPlayer;
+        collisionType = "player";
+        break;
+      }
+
+      const asteroid = asteroids.find((a) => a.x === checkX && a.y === checkY);
+      if (asteroid) {
+        collisionTarget = asteroid;
+        collisionType = "asteroid";
+        break;
+      }
+    }
+
+    // 2. If an object was found, calculate the precise length to its center
+    if (collisionTarget) {
+      const endX = collisionTarget.x * CELL_SIZE + CELL_SIZE / 2;
+      const endY = collisionTarget.y * CELL_SIZE + CELL_SIZE / 2;
+      const dx = endX - startX;
+      const dy = endY - startY;
+      laserLength = Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // 3. Create the laser beam with the correct length
     app.stage.addChild(
       new LaserBeam(
         SHIP_COLORS[ship.id],
         startX,
         startY,
         shipAngleRad,
-        BOARD_SIZE * CELL_SIZE * 1.5,
+        laserLength, // Use the calculated length
         3,
       ),
     );
-    for (let i = 1; i < BOARD_SIZE; i++) {
-      const checkX = ship.x + directions[ship.orientation].x * i;
-      const checkY = ship.y + directions[ship.orientation].y * i;
-      if (
-        checkX < 0 ||
-        checkX >= BOARD_SIZE ||
-        checkY < 0 ||
-        checkY >= BOARD_SIZE
-      )
-        break;
-      const otherPlayer = players.find(
-        (p) => p.id !== ship.id && p.x === checkX && p.y === checkY,
-      );
-      if (otherPlayer) {
-        otherPlayer.hp--;
-        showDamageEffect(otherPlayer);
-        enforceGoldenRule(otherPlayer);
-        updateShipGraphics(otherPlayer);
-        break;
-      }
-      const asteroid = asteroids.find((a) => a.x === checkX && a.y === checkY);
-      if (asteroid) {
-        asteroid.hp--;
-        asteroid.text.text = String(asteroid.hp);
-        if (asteroid.hp <= 0) captureAsteroid(ship, asteroid);
-        break;
+
+    // 4. Apply damage to the found target
+    if (collisionTarget) {
+      if (collisionType === "player") {
+        collisionTarget.hp--;
+        showDamageEffect(collisionTarget);
+        enforceGoldenRule(collisionTarget);
+        updateShipGraphics(collisionTarget);
+      } else if (collisionType === "asteroid") {
+        collisionTarget.hp--;
+        collisionTarget.text.text = String(collisionTarget.hp);
+        if (collisionTarget.hp <= 0) {
+          captureAsteroid(ship, collisionTarget);
+        }
       }
     }
+    // --- MODIFICATION END ---
+
     updateUI();
     checkWinConditions();
   }
@@ -815,8 +867,8 @@ const canvasContainer = document.getElementById("pixi-canvas");
       "hidden",
       !showSetupOrient && !showActionOrient,
     );
-    if (showSetupOrient) orientationTitleEl.textContent = "Set Orientation";
-    if (showActionOrient) orientationTitleEl.textContent = "Re-orient Ship";
+    //if (showSetupOrient) orientationTitleEl.textContent = "Set Orientation";
+    //if (showActionOrient) orientationTitleEl.textContent = "Re-orient Ship";
     if (showActions) updateActionButtons();
   }
   function updateActionButtons() {
@@ -871,7 +923,7 @@ const canvasContainer = document.getElementById("pixi-canvas");
     }
     gameStatusEl.textContent = statusText;
     if (selectedShip && gameState.phase === "ACTION")
-      actionsLeftEl.textContent = selectedShip.actionsLeft;
+      gameStatusEl.textContent += ` (${selectedShip.actionsLeft}/2)`;
     const pData = [0, 1].map((id) => {
       let p = players.find((player) => player.id === id && player.container);
       if (p)
